@@ -48,22 +48,27 @@ module.exports = function (io) {
     });
 
     socket.emit("rooms", await roomController.getAllRooms());
-    socket.on("joinRoom", async (rid, cb) => {
+
+    socket.on("joinRoom", async (req, cb) => {
       try {
         const user = await userController.checkUser(socket.id); // 일단 유저정보들고오기
-        await roomController.joinRoom(rid, user); // 1~2작업
-        socket.join(user.room.toString()); //3 작업
+        console.log("룸", user);
+        await roomController.joinRoom(req, user); // 유저.room에 방id 넣기
+        socket.join(user.room.toString()); //유저.roomid에 접속
+
+        const chatList = await roomController.checkChat(user.room.toString());
         const welcomeMessage = {
           chat: `${user.name} is joined to this room`,
           user: { id: null, name: "system" },
         };
-        io.to(user.room.toString()).emit("message", welcomeMessage); // 4 작업
-        io.emit("rooms", await roomController.getAllRooms()); // 5 작업
-        cb({ ok: true });
+        io.to(user.room.toString()).emit("message", welcomeMessage); // 시스템메세지
+        io.emit("rooms", await roomController.getAllRooms()); // 방 인원 업데이트 알림
+        cb({ ok: true, chatList });
       } catch (error) {
         cb({ ok: false, error: error.message });
       }
     });
+
     //채팅방나가기
     socket.on("leaveRoom", async (_, cb) => {
       try {
